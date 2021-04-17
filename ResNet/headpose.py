@@ -32,7 +32,6 @@ def headPoseEstimation(path):
     for i in range(len(right_eyes)):
         angles.append((right_eyes[i][1] - left_eyes[i][1]) / (right_eyes[i][0] - left_eyes[i][0]))
     bouding_boxes(path, faces)
-    draw_faces(path, faces)
     output = save_faces(path, faces)
     return output, faces
     

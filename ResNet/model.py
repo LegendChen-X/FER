@@ -264,7 +264,7 @@ def main():
     grad_clip = 0.1
     weight_decay = 1e-4
     print("Begin fit")
-    trainLog = fit(81, max_lr, model, trainDataLoader, validDataLoader, weight_decay, grad_clip, torch.optim.Adam)
+    trainLog = fit(50, max_lr, model, trainDataLoader, validDataLoader, weight_decay, grad_clip, torch.optim.Adam)
     torch.save(model.state_dict(), '9.pth')
     plot_losses(trainLog)
     plt.figure()
