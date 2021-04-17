@@ -1,5 +1,6 @@
 import cv2, torch
 import numpy as np
+import argparse
 from model import *
 from headpose import *
 from matplotlib import pyplot
@@ -23,11 +24,14 @@ def predict(x):
     return {'label': label, 'probability': prob, 'index': label_num}
     
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="Process image")
+    parser.add_argument("--image", help="path of image", required=True)
+    args = parser.parse_args()
     model = Model(1, 7)
     softmax = torch.nn.Softmax(dim=1)
     model.load_state_dict(torch.load('9.pth', map_location=get_default_device()))
-    out, faces = headPoseEstimation("test.PNG")
-    image = cv2.imread("test.PNG")
+    out, faces = headPoseEstimation(args.image)
+    image = cv2.imread(args.image)
     for i, face in zip(out, faces):
         img = torch.from_numpy(i.reshape((48, 48)))
         img = imgTensor(img)
