@@ -160,8 +160,8 @@ def fit(epochs, max_lr, model, train_loader, val_loader, weight_decay, grad_clip
     
     
 def main(type):
-    print("Get data successfully")
     data = np.load("./data/data.npz")
+    print("Load the data file successfully, start training:")
 
     train_images = data["train_images"]
     train_labels = data["train_labels"]
@@ -186,28 +186,28 @@ def main(type):
         transforms.Normalize((0.5), (0.5))
     ])
 
-    print("Initialize train data successfully")
     train_data = Dataset(train_images, train_labels, train_transform)
     valid_data = Dataset(test_images, test_labels, valid_transform)
+    print("Training and validation dataset initialization finished")
     torch.manual_seed(209)
     batch_num = 120
-    print("Get trainDataLoader successfully")
     trainDataLoader = DataLoader(train_data, batch_num, shuffle=True, num_workers=4, pin_memory=True)
     validDataLoader = DataLoader(valid_data, batch_num*2, num_workers=4, pin_memory=True)
+    print("TrainDataLoader and validDataLoader initialization finished")
     device = get_default_device()
     trainDataLoader = DeviceDataLoader(trainDataLoader, device)
     validDataLoader = DeviceDataLoader(validDataLoader, device)
-    print("Get model successfully")
     if type=="VGG":
         model = to_device(VGG(1, 7), device)
     else:
         model = to_device(ResNet(1, 7), device)
-    print("Begin evaluate")
+    print("Get the model type:" , type)
+    print("Start model evaluation:")
     evaluate(model, validDataLoader)
     max_lr = 0.001
     grad_clip = 0.1
     weight_decay = 1e-4
-    print("Begin fit")
+    print("Start model fitting:")
     trainLog = fit(30, max_lr, model, trainDataLoader, validDataLoader, weight_decay, grad_clip, torch.optim.Adam)
     torch.save(model.state_dict(), type+'.pth')
     plot_losses(trainLog)
