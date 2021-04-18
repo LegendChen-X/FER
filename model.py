@@ -12,14 +12,16 @@ from torchvision.utils import make_grid
 from util import *
 
 
-
 classes = {
     0: 'Surprise', 1: 'Fear', 2: 'Disgust', 3: 'Happy', 4: 'Sad', 5: 'Anger', 6: 'Neutral'
 }
 
 
 def conv_block(in_chnl, out_chnl, pool=False, padding=1):
-    layers = [nn.Conv2d(in_chnl, out_chnl, kernel_size=3, padding=padding), nn.BatchNorm2d(out_chnl), nn.ReLU(inplace=True)]
+    layers = []
+    layers.append(nn.Conv2d(in_chnl, out_chnl, kernel_size=3, padding=padding))
+    layers.append(nn.BatchNorm2d(out_chnl))
+    layers.append(nn.ReLU(inplace=True))
     if pool: layers.append(nn.MaxPool2d(2))
     return nn.Sequential(*layers)
     
@@ -31,24 +33,12 @@ class Base(nn.Module):
         loss = F.cross_entropy(out, labels)
         return loss
     
-    def validation_step(self, batch):
+    def validating(self, batch):
         images, labels = batch
         out = self(images)
         loss = F.cross_entropy(out, labels)
         acc = accuracy(out, labels)
         return {'val_loss': loss.detach(), 'val_acc': acc}
-    
-    def validation_epoch_end(self, outputs):
-        batch_losses = [x['val_loss'] for x in outputs]
-        epoch_loss = torch.stack(batch_losses).mean()
-        batch_accs = [x['val_acc'] for x in outputs]
-        epoch_acc = torch.stack(batch_accs).mean()
-        return {'val_loss': epoch_loss.item(), 'val_acc': epoch_acc.item()}
-    
-    def epoch_end(self, epoch, result):
-        print("Epoch [{}], last_lr: {:.5f}, train_loss: {:.4f}, val_loss: {:.4f}, val_acc: {:.4f}".format(
-            epoch, result['lrs'][-1], result['train_loss'], result['val_loss'], result['val_acc']))
-
 
 class ResNet(Base):
     def __init__(self, in_chnls, num_cls):
@@ -74,7 +64,19 @@ class ResNet(Base):
 class VGG(Base):
     def __init__(self, in_chnls, num_cls):
         super(VGG, self).__init__()
-        self.features = self._make_layers(in_chnls)
+        vgg = [64, 64, 'M', 128, 128, 'M', 256, 256, 256, 256, 'M', 512, 512, 512, 512, 'M', 512, 512, 512, 512, 'M']
+        layers = []
+        in_channels = in_chnls
+        for x in vgg:
+            if x == 'M':
+                layers.append(nn.MaxPool2d(kernel_size=2, stride=2))
+            else:
+                layers.append(nn.Conv2d(in_channels, x, kernel_size=3, padding=1))
+                layers.append(nn.BatchNorm2d(x))
+                layers.append(nn.ReLU(inplace=True))
+                in_channels = x
+        layers.append(nn.AvgPool2d(kernel_size=1, stride=1))
+        self.features = nn.Sequential(*layers)
         self.classifier = nn.Linear(512, num_cls)
         
     def forward(self, x):
@@ -83,38 +85,21 @@ class VGG(Base):
         out = F.dropout(out, p=0.5, training=self.training)
         out = self.classifier(out)
         return out
-        
-    def _make_layers(self, in_chnls):
-        vgg = [64, 64, 'M', 128, 128, 'M', 256, 256, 256, 256, 'M', 512, 512, 512, 512, 'M', 512, 512, 512, 512, 'M']
-        layers = []
-        in_channels = in_chnls
-        for x in vgg:
-            if x == 'M':
-                layers += [nn.MaxPool2d(kernel_size=2, stride=2)]
-            else:
-                layers += [nn.Conv2d(in_channels, x, kernel_size=3, padding=1),
-                           nn.BatchNorm2d(x),
-                           nn.ReLU(inplace=True)]
-                in_channels = x
-        layers += [nn.AvgPool2d(kernel_size=1, stride=1)]
-        return nn.Sequential(*layers)
-
 
 class Dataset(Dataset):
-
     def __init__(self, images, labels, transforms):
-        self.X = images
-        self.y = labels
+        self.inputs = images
+        self.labels = labels
         self.transforms = transforms
     
     def __len__(self):
-        return len(self.X)
+        return len(self.inputs)
 
     def __getitem__(self, i):
-        data = self.X[i]
+        data = self.inputs[i]
         data = np.asarray(data).astype(np.uint8).reshape(48,48,1)
         data = self.transforms(data)
-        label = self.y[i]
+        label = self.labels[i]
         return (data, label)
         
 
@@ -136,8 +121,12 @@ class DeviceDataLoader():
 def evaluate(model, val_loader):
     model.eval()
     print(model)
-    outputs = [model.validation_step(batch) for batch in val_loader]
-    return model.validation_epoch_end(outputs)
+    outputs = [model.validating(batch) for batch in val_loader]
+    batch_losses = [x['val_loss'] for x in outputs]
+    epoch_loss = torch.stack(batch_losses).mean()
+    batch_accs = [x['val_acc'] for x in outputs]
+    epoch_acc = torch.stack(batch_accs).mean()
+    return {'val_loss': epoch_loss.item(), 'val_acc': epoch_acc.item()}
     
 def get_lr(optimizer):
     for param_group in optimizer.param_groups:
@@ -164,67 +153,20 @@ def fit(epochs, max_lr, model, train_loader, val_loader, weight_decay, grad_clip
         result = evaluate(model, val_loader)
         result['train_loss'] = torch.stack(train_losses).mean().item()
         result['lrs'] = lrs
-        model.epoch_end(epoch, result)
+        print("Epoch [{}], last_lr: {:.5f}, train_loss: {:.4f}, val_loss: {:.4f}, val_acc: {:.4f}".format(
+            epoch, result['lrs'][-1], result['train_loss'], result['val_loss'], result['val_acc']))
         history.append(result)
     return history
     
     
 def main(type):
     print("Get data successfully")
-    npzfile = np.load("./data/raf_db.npz")
-    npzfile1 = np.load("./data/toronto_face.npz")
+    data = np.load("./data/data.npz")
 
-    train_images = npzfile["inputs_train"]
-    train_labels = np.argmax(npzfile["target_train"], axis=1)
-    test_images = npzfile["inputs_valid"]
-    test_labels = np.argmax(npzfile["target_valid"], axis=1)
-
-    train_images1 = npzfile1["inputs_train"]
-    train_labels1 = npzfile1["target_train"]
-    test_images1 = npzfile1["inputs_valid"]
-    test_labels1 = npzfile1["target_valid"]
-
-
-    for i in range(len(train_labels1)):
-        if train_labels1[i] == 0:
-            train_labels1[i] = 5
-        elif train_labels1[i] == 1:
-            train_labels1[i] = 2
-        elif train_labels1[i] == 2:
-            train_labels1[i] = 1
-        elif train_labels1[i] == 3:
-            train_labels1[i] = 3
-        elif train_labels1[i] == 4:
-            train_labels1[i] = 4
-        elif train_labels1[i] == 5:
-            train_labels1[i] = 0
-        elif train_labels1[i] == 6:
-            train_labels1[i] = 6
-        else:
-            print("wrong train label",train_labels1[i])
-    
-    for i in range(len(test_labels1)):
-        if test_labels1[i] == 0:
-            test_labels1[i] = 5
-        elif test_labels1[i] == 1:
-            test_labels1[i] = 2
-        elif test_labels1[i] == 2:
-            test_labels1[i] = 1
-        elif test_labels1[i] == 3:
-            test_labels1[i] = 3
-        elif test_labels1[i] == 4:
-            test_labels1[i] = 4
-        elif test_labels1[i] == 5:
-            test_labels1[i] = 0
-        elif test_labels1[i] == 6:
-            test_labels1[i] = 6
-        else:
-            print("wrong test label",test_labels1[i])
-
-    train_images = np.concatenate((train_images, train_images1))
-    train_labels = np.concatenate((train_labels, train_labels1))
-    test_images = np.concatenate((test_images, test_images1))
-    test_labels = np.concatenate((test_labels, test_labels1))
+    train_images = data["train_images"]
+    train_labels = data["train_labels"]
+    test_images = data["test_images"]
+    test_labels = data["test_labels"]
 
     train_transform = transforms.Compose(
     [
@@ -247,7 +189,7 @@ def main(type):
     print("Initialize train data successfully")
     train_data = Dataset(train_images, train_labels, train_transform)
     valid_data = Dataset(test_images, test_labels, valid_transform)
-    torch.manual_seed(33)
+    torch.manual_seed(209)
     batch_num = 120
     print("Get trainDataLoader successfully")
     trainDataLoader = DataLoader(train_data, batch_num, shuffle=True, num_workers=4, pin_memory=True)
@@ -260,7 +202,7 @@ def main(type):
         model = to_device(VGG(1, 7), device)
     else:
         model = to_device(ResNet(1, 7), device)
-    print("Begin evalute")
+    print("Begin evaluate")
     evaluate(model, validDataLoader)
     max_lr = 0.001
     grad_clip = 0.1
@@ -269,7 +211,6 @@ def main(type):
     trainLog = fit(30, max_lr, model, trainDataLoader, validDataLoader, weight_decay, grad_clip, torch.optim.Adam)
     torch.save(model.state_dict(), type+'.pth')
     plot_losses(trainLog)
-    plt.figure()
     plot_lrs(trainLog)
     
 if __name__ == "__main__":
