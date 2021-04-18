@@ -4,15 +4,10 @@ import matplotlib.pyplot as plt
 import torch, os
 import pandas as pd
 import torch.nn as nn
-import torch.nn.functional as F
 from matplotlib import pyplot
 from matplotlib.patches import Rectangle
 from matplotlib.patches import Circle
 from mtcnn.mtcnn import MTCNN
-from torch.utils.data import Dataset, DataLoader, random_split
-from torchvision import transforms, utils
-from torchvision.transforms import ToTensor
-from torchvision.utils import make_grid
 
 
 def bouding_boxes(path, result_list):
