@@ -6,39 +6,37 @@ from util import *
 from matplotlib import pyplot
 
 
-def imgTensor(x):
-    transform = transforms.Compose(
+def imgTensor(img):
+    img_transform = transforms.Compose(
             [transforms.ToPILImage(),
             transforms.Grayscale(num_output_channels=1),
             transforms.ToTensor(),
             transforms.Normalize((0.5), (0.5))])
-    return transform(x)
+    return img_transform(img)
 
+def predict(img):
+    model_out = model(imgTensor(img)[None])
+    softmax = torch.nn.Softmax(dim=1)
+    soft_out = softmax(model_out)
+    probability = torch.max(soft_out).item()
+    label = classes[torch.argmax(soft_out).item()]
+    label_index = torch.argmax(soft_out).item()
+    return {'label': label, 'probability': probability, 'index': label_index}
 
-def predict(x):
-    out = model(imgTensor(img)[None])
-    scaled = softmax(out)
-    prob = torch.max(scaled).item()
-    label = classes[torch.argmax(scaled).item()]
-    label_num = torch.argmax(scaled).item()
-    return {'label': label, 'probability': prob, 'index': label_num}
-    
-    
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Process image")
     parser.add_argument("--image", help="path of image", required=True)
     parser.add_argument("--type", help="VGG or ResNet", required=True)
     args = parser.parse_args()
+    image = cv2.imread(args.image)
     if args.type=="VGG":
         model = VGG(1, 7)
     else:
         model = ResNet(1, 7)
-    softmax = torch.nn.Softmax(dim=1)
+    print("Get the model type:", args.type)
     model.load_state_dict(torch.load(args.type+".pth", map_location=get_default_device()))
-    out, faces = headPoseEstimation(args.image)
-    image = cv2.imread(args.image)
-    for i, face in zip(out, faces):
-        img = torch.from_numpy(i.reshape((48, 48)))
-        img = imgTensor(img)
-        prediction = predict(img)
-        print(prediction['label'], prediction['probability'])
+    outputs, faces = headPoseEstimation(args.image)
+    for output, face in zip(outputs, faces):
+        image = torch.from_numpy(output.reshape((48, 48)))
+        reslut = predict(imgTensor(image))
+        print("The predicted expression is："+ reslut['label'] + " with probability：%f" % reslut['probability'])
