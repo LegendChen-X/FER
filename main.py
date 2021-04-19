@@ -14,7 +14,7 @@ def imgTensor(img):
             transforms.Normalize((0.5), (0.5))])
     return img_transform(img)
 
-def predict(img):
+def predict(img, model):
     model_out = model(imgTensor(img)[None])
     softmax = torch.nn.Softmax(dim=1)
     soft_out = softmax(model_out)
@@ -38,5 +38,5 @@ if __name__ == "__main__":
     outputs, faces = headPoseEstimation(args.image)
     for output, face in zip(outputs, faces):
         image = torch.from_numpy(output.reshape((48, 48)))
-        reslut = predict(imgTensor(image))
+        reslut = predict(image, model)
         print("The predicted expression is："+ reslut['label'] + " with probability：%f" % reslut['probability'])
