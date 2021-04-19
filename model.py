@@ -213,6 +213,28 @@ def main(type):
     plot_losses(trainLog)
     plot_lrs(trainLog)
     
+def testBias(type):
+    data = np.load("./data/test.npz")
+    model = None
+    if type=="VGG":
+        model = VGG(1, 7)
+    else:
+        model = ResNet(1, 7)
+    model.load_state_dict(torch.load(args.type+".pth", map_location=get_default_device()))
+    res = []
+    
+    for i in range(7):
+        test_images = data["test_images"+str(i)]
+        test_labels = data["test_labels"+str(i)]
+        num, _ = test_images.shape
+        count = 0
+        for i in range(num):
+            image = torch.from_numpy(test_images[i].reshape((48, 48)))
+            result = predict(image)
+            if result['index'] == test_labels[i]: count += 1
+        res.append(float(count)/float(num))
+    return res
+    
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Model Type")
     parser.add_argument("--type", help="VGG or ResNet", required=True)
