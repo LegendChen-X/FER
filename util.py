@@ -95,8 +95,3 @@ def to_device(data, device=get_default_device()):
     if isinstance(data, (list,tuple)): return [to_device(x, device) for x in data]
     return data.to(device, non_blocking=True)
 
-
-def conv_block(in_chnl, out_chnl, pool=False, padding=1):
-    layers = [nn.Conv2d(in_chnl, out_chnl, kernel_size=3, padding=padding), nn.BatchNorm2d(out_chnl), nn.ReLU(inplace=True)]
-    if pool: layers.append(nn.MaxPool2d(2))
-    return nn.Sequential(*layers)
