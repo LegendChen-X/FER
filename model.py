@@ -12,6 +12,8 @@ from torchvision.transforms import ToTensor
 from torchvision.utils import make_grid
 from util import *
 
+# We have reference for the ResNet18 class from the link: https://github.com/Nebula4869/PyTorch_facial_expression_recognition/blob/master/model.py
+# We also reuse some of code from our previous project in CSC420.
 
 classes = {
     0: 'Surprise', 1: 'Fear', 2: 'Disgust', 3: 'Happy', 4: 'Sad', 5: 'Anger', 6: 'Neutral'
