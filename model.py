@@ -3,6 +3,7 @@ import numpy as np
 import torch, os
 import pandas as pd
 import torch.nn as nn
+import math
 import torch.nn.functional as F
 import argparse
 from torch.utils.data import Dataset, DataLoader, random_split
@@ -183,7 +184,7 @@ class ResNet18(Base):
 
     def __init__(self, block, layers, num_classes=1000):
         self.in_planes = 64
-        super(ResNet, self).__init__()
+        super(ResNet18, self).__init__()
         self.conv1 = nn.Sequential(nn.Conv2d(1, 64, kernel_size=7, stride=2, padding=3, bias=False),
                                    nn.BatchNorm2d(64),
                                    nn.ReLU(inplace=True))
@@ -323,11 +324,12 @@ def main(type, batch, epoch):
 def testBias(t):
     data = np.load("./data/test.npz")
     model = None
-    if t=="VGG":
-        print("VGG")
+    if t == "VGG":
         model = VGG(1, 7)
+    elif t == "ResNet09":
+        model = ResNet09(1, 7)
     else:
-        model = ResNet(1, 7)
+        model = ResNet18(BasicBlock, [2,2,2,2], 7)
     
     model.load_state_dict(torch.load(t + ".pth", map_location=get_default_device()))
     model.cuda()
@@ -360,5 +362,5 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Model Type")
     parser.add_argument("--type", help="VGG or ResNet09 or ResNet18", required=True)
     args = parser.parse_args()
-    main(args.type, 400, 33)
-    #testBias("ResNet09")
+    main(args.type, 400, 30)
+    testBias("ResNet18")
