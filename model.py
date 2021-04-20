@@ -213,26 +213,40 @@ def main(type):
     plot_losses(trainLog)
     plot_lrs(trainLog)
     
-def testBias(type):
-    data = np.load("./data/test.npz")
+def testBias(t, name):
+    data = np.load("../data/test.npz")
     model = None
-    if type=="VGG":
+    if t=="VGG":
+        print("VGG")
         model = VGG(1, 7)
     else:
         model = ResNet(1, 7)
-    model.load_state_dict(torch.load(args.type+".pth", map_location=get_default_device()))
-    res = []
     
+    model.load_state_dict(torch.load(name + ".pth", map_location=get_default_device()))
+    model.cuda()
+    res = []
+
+    valid_transform = transforms.Compose(
+    [
+        transforms.ToPILImage(),
+        transforms.Grayscale(num_output_channels=1),
+        transforms.ToTensor(),
+        transforms.Normalize((0.5), (0.5))
+    ])
+    batch_num = 120
+
     for i in range(7):
         test_images = data["test_images"+str(i)]
         test_labels = data["test_labels"+str(i)]
-        num, _ = test_images.shape
-        count = 0
-        for i in range(num):
-            image = torch.from_numpy(test_images[i].reshape((48, 48)))
-            result = predict(image)
-            if result['index'] == test_labels[i]: count += 1
-        res.append(float(count)/float(num))
+        valid_data = Dataset(test_images, test_labels, valid_transform)
+        validDataLoader = DataLoader(valid_data, batch_num*2, num_workers=4, pin_memory=True)
+        device = get_default_device()
+        validDataLoader = DeviceDataLoader(validDataLoader, device)
+        result = evaluate(model, validDataLoader)
+        print("Emotion [{}], val_loss: {:.4f}, val_acc: {:.4f}".format(
+            i, result['val_loss'], result['val_acc']))
+        res.append(result['val_acc'])
+
     return res
     
 if __name__ == "__main__":
