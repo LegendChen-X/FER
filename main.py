@@ -35,13 +35,15 @@ def predictFull(img, model):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Process image")
     parser.add_argument("--image", help="path of image", required=True)
-    parser.add_argument("--type", help="VGG or ResNet", required=True)
+    parser.add_argument("--type", help="VGG or ResNet09 or ResNet18", required=True)
     args = parser.parse_args()
     image = cv2.imread(args.image)
     if args.type == "VGG":
         model = VGG(1, 7)
+    elif args.type == "ResNet09":
+        model = ResNet09(1, 7)
     else:
-        model = ResNet(1, 7)
+        model = ResNet18(BasicBlock, [2,2,2,2], 7)
     print("Get the model type:", args.type)
     model.load_state_dict(torch.load(args.type + ".pth", map_location=get_default_device()))
     outputs, faces = headPoseEstimation(args.image)
