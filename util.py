@@ -95,3 +95,22 @@ def to_device(data, device=get_default_device()):
     if isinstance(data, (list,tuple)): return [to_device(x, device) for x in data]
     return data.to(device, non_blocking=True)
 
+def plot_losses_all(history1, history2, history3):
+    train_losses1 = [x.get('train_loss') for x in history1]
+    train_losses2 = [x.get('train_loss') for x in history2]
+    train_losses3 = [x.get('train_loss') for x in history3]
+    val_losses1 = [x['val_loss'] for x in history1]
+    val_losses2 = [x['val_loss'] for x in history2]
+    val_losses3 = [x['val_loss'] for x in history3]
+    plt.plot(train_losses1, '-b', label="VGG TL")
+    plt.plot(train_losses2, '-p', label="ResNet09 TL")
+    plt.plot(train_losses3, '-g', label="ResNet18 TL")
+    plt.plot(val_losses1, '-k', label="VGG VL")
+    plt.plot(val_losses2, '-m', label="ResNet09 VL")
+    plt.plot(val_losses3, '-c', label="ResNet18 VL")
+    plt.xlabel('epoch')
+    plt.ylabel('loss')
+    plt.legend()
+    plt.title('Loss vs. No. of epochs')
+    plt.savefig("res.png")
+
