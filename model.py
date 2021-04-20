@@ -304,7 +304,7 @@ def main(type, batch, epoch):
     validDataLoader = DeviceDataLoader(validDataLoader, device)
     if type=="VGG":
         model = to_device(VGG(1, 7), device)
-    else if type=="ResNet09":
+    elif type=="ResNet09":
         model = to_device(ResNet09(1, 7), device)
     else:
         model = to_device(ResNet18(BasicBlock, [2,2,2,2], 7), device)
