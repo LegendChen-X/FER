@@ -309,8 +309,25 @@ def main(type, batch, epoch):
         model = to_device(VGG(1, 7), device)
     elif type=="ResNet09":
         model = to_device(ResNet09(1, 7), device)
-    else:
+    elif type=="ResNet18":
         model = to_device(ResNet18(BasicBlock, [2,2,2,2], 7), device)
+    else:
+        model1 = to_device(VGG(1, 7), device)
+        model2 = to_device(ResNet09(1, 7), device)
+        model3 = to_device(ResNet18(BasicBlock, [2,2,2,2], 7), device)
+        evaluate(model1, validDataLoader)
+        max_lr = 0.001
+        grad_clip = 0.1
+        weight_decay = 1e-4
+        trainLog1 = fit(epoch, max_lr, model1, trainDataLoader, validDataLoader, weight_decay, grad_clip, torch.optim.Adam)
+        trainLog2 = fit(epoch, max_lr, model2, trainDataLoader, validDataLoader, weight_decay, grad_clip, torch.optim.Adam)
+        trainLog3 = fit(epoch, max_lr, model3, trainDataLoader, validDataLoader, weight_decay, grad_clip, torch.optim.Adam)
+        torch.save(model1.state_dict(), type+'.pth')
+        torch.save(model2.state_dict(), type+'.pth')
+        torch.save(model3.state_dict(), type+'.pth')
+        plot_losses_all(trainLog1, trainLog2, trainLog3)
+        return
+        
     print("Get the model type:" , type)
     print("Start model evaluation:")
     evaluate(model, validDataLoader)
