@@ -1,4 +1,4 @@
-# CSC413_project
+# FER with VGG & ResNet
 
 ## Use case
 For training, use `python3 model.py --type <VGG or ResNet>`
