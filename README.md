@@ -10,3 +10,6 @@ For image testing, use `python3 main.py --image <Image Path> --type <VGG or ResN
 <p align="center">
   <img src="./result.png" alt="res" width=500//>
 </p>
+<p align="center">
+  <img src="./result2.png" alt="res" width=500//>
+</p>
